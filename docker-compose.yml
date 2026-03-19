@@ -1,0 +1,94 @@
+services:
+  db:
+    image: postgres:16
+    container_name: semi-fab-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  init-db:
+    image: python:3.11-slim
+    container_name: semi-fab-init-db
+    working_dir: /app
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      - ./SMT_2000_Simulation:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt &&
+             python init_db.py &&
+             python -c \"import json,urllib.request,time;payload={'sessionId':'99a118','runId':'pre-fix','hypothesisId':'H1','location':'docker-compose.yml:init-db:command','message':'init-db finished','data':{'status':'completed_once'},'timestamp':int(time.time()*1000)};req=urllib.request.Request('http://127.0.0.1:7762/ingest/9df8c455-7c67-4da7-b636-1936eb121846',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json','X-Debug-Session-Id':'99a118'});urllib.request.urlopen(req,timeout=2)\""
+    profiles: ["init"]
+
+  api:
+    build:
+      context: ./SMT_2000_Simulation
+      dockerfile: Dockerfile
+    container_name: semi-fab-api
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      - ./SMT_2000_Simulation:/app
+      - ./.cursor:/Users/skala/Desktop/SKALA_backup/Semi_Fab_Sim/.cursor
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn main_api:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "${BACKEND_PORT}:8000"
+
+  frontend:
+    build:
+      context: ./fab-dashboard
+      dockerfile: Dockerfile
+    container_name: semi-fab-frontend
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+    volumes:
+      - ./fab-dashboard:/app
+    depends_on:
+      - spring-api
+    command: npx vite --force --host 0.0.0.0 --port 5173
+    ports:
+      - "${FRONTEND_PORT}:5173"
+
+  spring-api:
+    build:
+      context: ./spring-backend
+      dockerfile: Dockerfile
+    container_name: semi-fab-spring-api
+    restart: unless-stopped
+    environment:
+      PY_ENGINE_BASE_URL: http://api:8000
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_PORT: 8080
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:
