@@ -19,3 +19,24 @@ spec:
         image: amdp-registry.skala-ai.com/skala26a-ai1/spring-backend:latest
         ports:
         - containerPort: 8080
+        env:
+        # application.yml: spring.datasource.* ← SPRING_DATASOURCE_* 로 주입 (없으면 JPA가 JDBC URL 없이 기동 실패)
+        - name: SPRING_PORT
+          value: "8080"
+        - name: ENGINE_MODE
+          value: "java"
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            secretKeyRef:
+              name: semi-fab-db
+              key: jdbc-url
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: semi-fab-db
+              key: username
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: semi-fab-db
+              key: password

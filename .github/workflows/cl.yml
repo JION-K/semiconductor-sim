@@ -2,6 +2,7 @@
 #   HARBOR_USERNAME, HARBOR_PASSWORD — Harbor
 #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION — AWS (CD)
 #   EKS_CLUSTER_NAME — EKS cluster name for aws eks update-kubeconfig
+#   DB_JDBC_URL, DB_USERNAME, DB_PASSWORD — Postgres JDBC (deployment envFrom Secret semi-fab-db)
 # Required GitHub Actions variables (repository):
 #   HARBOR_REGISTRY, HARBOR_PROJECT, IMAGE_NAME — must match deployment image registry path
 
@@ -91,6 +92,23 @@ jobs:
       - name: Ensure namespace exists
         run: |
           kubectl create namespace skala3-ai1 --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply database Secret (GitHub Secrets → semi-fab-db)
+        env:
+          JDBC_URL: ${{ secrets.DB_JDBC_URL }}
+          DB_USER: ${{ secrets.DB_USERNAME }}
+          DB_PASS: ${{ secrets.DB_PASSWORD }}
+        run: |
+          if [ -z "$JDBC_URL" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASS" ]; then
+            echo "::warning::DB_JDBC_URL / DB_USERNAME / DB_PASSWORD not all set. Create Secret semi-fab-db in the cluster manually or add these repo secrets."
+            exit 0
+          fi
+          kubectl create secret generic semi-fab-db \
+            --namespace=skala3-ai1 \
+            --from-literal=jdbc-url="$JDBC_URL" \
+            --from-literal=username="$DB_USER" \
+            --from-literal=password="$DB_PASS" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Apply manifests
         run: |
