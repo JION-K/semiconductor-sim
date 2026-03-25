@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-sk008-app
+  namespace: skala3-ai1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spring-backend-sk008
+  template:
+    metadata:
+      labels:
+        app: spring-backend-sk008
+    spec:
+      containers:
+      - name: app-container
+        # Harbor latest (CI also tags :<git-sha>); CD rolls out the SHA tag via kubectl set image.
+        image: amdp-registry.skala-ai.com/skala26a-ai1/spring-backend:latest
+        ports:
+        - containerPort: 8080

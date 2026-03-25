@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-sk008-app       # 생성될 서비스(대표 번호)의 이름
+  namespace: skala3-ai1
+spec:
+  selector:
+    app: spring-backend-sk008  # 🎯 핵심! "이 이름표를 가진 Pod(직원)에게 전화를 연결해라!"
+  ports:
+  - protocol: TCP
+    port: 8080              # 서비스가 외부(클러스터 내부망)로 열어둘 포트
+    targetPort: 8080        # 실제 Pod 안의 스프링부트가 듣고 있는 포트
+  type: ClusterIP           # 클러스터 내부에서만 접근 가능한 기본 내선 번호 타입
