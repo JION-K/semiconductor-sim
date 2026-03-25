@@ -1,0 +1,76 @@
+# 과제용: 같은 네임스페이스(skala3-ai1)에 PostgreSQL 1대 (비영속 emptyDir — Pod 삭제 시 데이터 초기화)
+# 적용: kubectl apply -f k8s/postgres-in-cluster.yaml
+#
+# 그 다음 Spring이 쓰는 Secret semi-fab-db를 같은 비밀번호로 맞춤:
+#   jdbc-url: jdbc:postgresql://postgres.skala3-ai1.svc.cluster.local:5432/postgres
+#   username: postgres
+#   password: (아래 postgres-app-secret 과 동일)
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-app-secret
+  namespace: skala3-ai1
+type: Opaque
+stringData:
+  # 적용 전 반드시 바꾸세요. GitHub Secrets DB_PASSWORD 와 동일하게 두면 편합니다.
+  postgres-password: "postgres"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: skala3-ai1
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-app-secret
+                  key: postgres-password
+            - name: POSTGRES_DB
+              value: postgres
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: skala3-ai1
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432

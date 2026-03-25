@@ -1,5 +1,43 @@
 # Kubernetes: Spring DB 연결
 
+## 과제용: 클러스터 안에 Postgres 빠르게 올리기
+
+RDS 없이 **EKS 안에만** DB를 두고 맞추려면:
+
+1. **네임스페이스** (이미 CD에서 쓰는 경우 생략 가능)
+   ```bash
+   kubectl create namespace skala3-ai1 --dry-run=client -o yaml | kubectl apply -f -
+   ```
+
+2. **`k8s/postgres-in-cluster.yaml` 수정**  
+   - `postgres-app-secret`의 `postgres-password`를 원하는 값으로 변경 (기본 `postgres`는 데모용).
+
+3. **Postgres 배포**
+   ```bash
+   kubectl apply -f k8s/postgres-in-cluster.yaml
+   kubectl wait --for=condition=ready pod -l app=postgres -n skala3-ai1 --timeout=120s
+   kubectl get pods,svc -n skala3-ai1 -l app=postgres
+   ```
+
+4. **GitHub Actions Secrets** (또는 수동 `semi-fab-db`) — **Postgres와 동일한 비밀번호**로 맞춤
+   - `DB_JDBC_URL` = `jdbc:postgresql://postgres.skala3-ai1.svc.cluster.local:5432/postgres`
+   - `DB_USERNAME` = `postgres`
+   - `DB_PASSWORD` = 위에서 넣은 비밀번호
+
+5. **CI/CD 다시 실행**하거나, 수동으로:
+   ```bash
+   kubectl create secret generic semi-fab-db -n skala3-ai1 \
+     --from-literal=jdbc-url='jdbc:postgresql://postgres.skala3-ai1.svc.cluster.local:5432/postgres' \
+     --from-literal=username='postgres' \
+     --from-literal=password='여기비밀번호' \
+     --dry-run=client -o yaml | kubectl apply -f -
+   kubectl rollout restart deployment/deploy-sk008-app -n skala3-ai1
+   ```
+
+**주의:** 이 매니페스트는 **emptyDir**라 Pod가 지워지면 DB 데이터도 사라집니다. 과제/데모용입니다. 운영이면 RDS 또는 StatefulSet+PVC를 쓰세요.
+
+---
+
 `application.yml`은 다음 환경 변수를 읽습니다.
 
 | 환경 변수 | 매핑 |
