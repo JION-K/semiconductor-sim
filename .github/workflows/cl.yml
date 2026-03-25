@@ -1,6 +1,7 @@
 # Required GitHub Actions secrets (repository):
-#   HARBOR_USERNAME, HARBOR_PASSWORD — Harbor login (existing)
-#   KUBE_CONFIG — base64-encoded kubeconfig file for the target cluster (CD)
+#   HARBOR_USERNAME, HARBOR_PASSWORD — Harbor
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION — AWS (CD)
+#   EKS_CLUSTER_NAME — EKS cluster name for aws eks update-kubeconfig
 # Required GitHub Actions variables (repository):
 #   HARBOR_REGISTRY, HARBOR_PROJECT, IMAGE_NAME — must match deployment image registry path
 
@@ -74,13 +75,18 @@ jobs:
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
 
-      - name: Configure kubeconfig
-        env:
-          KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update kubeconfig for EKS
         run: |
-          mkdir -p ~/.kube
-          echo "$KUBE_CONFIG_B64" | base64 -d > ~/.kube/config
-          chmod 600 ~/.kube/config
+          aws eks update-kubeconfig \
+            --name "${{ secrets.EKS_CLUSTER_NAME }}" \
+            --region "${{ secrets.AWS_REGION }}"
 
       - name: Ensure namespace exists
         run: |
