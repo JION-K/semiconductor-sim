@@ -15,14 +15,16 @@ spring:
       hibernate:
         format_sql: true
   flyway:
-    enabled: false
+    enabled: true
     baseline-on-migrate: true
 
 management:
   endpoints:
     web:
+      base-path: /
       exposure:
         include: health,info,metrics,prometheus
 
 engine:
+  mode: ${ENGINE_MODE:java}
   base-url: ${PY_ENGINE_BASE_URL:http://127.0.0.1:8000}

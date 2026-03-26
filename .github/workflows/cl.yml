@@ -112,7 +112,7 @@ jobs:
 
       - name: Apply manifests
         run: |
-          kubectl apply -f deployment.yaml -f service.yaml
+          kubectl apply -f deployment.yaml -f service.yaml -f ingress.yaml
 
       - name: Roll out image built in CI
         env:

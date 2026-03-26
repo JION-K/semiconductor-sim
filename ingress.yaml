@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sk008-ingress
+  namespace: skala3-ai1
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: public-nginx
+  rules:
+    - host: sk008.project.skala-ai.com
+      http:
+        paths:
+          - path: /sk008(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: svc-sk008-app
+                port:
+                  number: 8080
